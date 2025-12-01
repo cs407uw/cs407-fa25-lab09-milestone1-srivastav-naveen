@@ -12,60 +12,68 @@ import kotlinx.coroutines.flow.update
 class BallViewModel : ViewModel() {
 
     private var ball: Ball? = null
+    private val sensitivity = 8f
     private var lastTimestamp: Long = 0L
+
+    // Baseline gravity values captured once
+    private var baseX = 0f
+    private var baseY = 0f
+    private var hasBaseline = false
 
     // Expose the ball's position as a StateFlow
     private val _ballPosition = MutableStateFlow(Offset.Zero)
     val ballPosition: StateFlow<Offset> = _ballPosition.asStateFlow()
 
-    /**
-     * Called by the UI when the game field's size is known.
-     */
     fun initBall(fieldWidth: Float, fieldHeight: Float, ballSizePx: Float) {
         if (ball == null) {
-            // TODO: Initialize the ball instance
-            // ball = Ball(...)
-
-            // TODO: Update the StateFlow with the initial position
-            // _ballPosition.value = Offset(ball!!.posX, ball!!.posY)
+            ball = Ball(fieldWidth, fieldHeight, ballSizePx)
+            ball!!.reset()
+            _ballPosition.value = Offset(ball!!.posX, ball!!.posY)
         }
     }
 
-    /**
-     * Called by the SensorEventListener in the UI.
-     */
     fun onSensorDataChanged(event: SensorEvent) {
-        // Ensure ball is initialized
         val currentBall = ball ?: return
 
         if (event.sensor.type == Sensor.TYPE_GRAVITY) {
-            if (lastTimestamp != 0L) {
-                // TODO: Calculate the time difference (dT) in seconds
-                // Hint: event.timestamp is in nanoseconds
-                // val NS2S = 1.0f / 1000000000.0f
-                // val dT = ...
 
-                // TODO: Update the ball's position and velocity
-                // Hint: The sensor's x and y-axis are inverted
-                // currentBall.updatePositionAndVelocity(xAcc = ..., yAcc = ..., dT = ...)
-
-                // TODO: Update the StateFlow to notify the UI
-                // _ballPosition.update { Offset(currentBall.posX, currentBall.posY) }
+            if (!hasBaseline) {
+                // capture initial gravity vector
+                baseX = event.values[0]
+                baseY = event.values[1]
+                hasBaseline = true
             }
 
-            // TODO: Update the lastTimestamp
-            // lastTimestamp = ...
+            if (lastTimestamp != 0L) {
+                val NS2S = 1.0f / 1_000_000_000.0f
+                val dT = (event.timestamp - lastTimestamp) * NS2S
+
+                // remove constant gravity by subtracting baseline
+                val xAcc = -(event.values[0] - baseX) * sensitivity
+                val yAcc = -(event.values[1] - baseY) * sensitivity
+
+
+                currentBall.updatePositionAndVelocity(
+                    xAcc = xAcc,
+                    yAcc = yAcc,
+                    dT = dT
+                )
+
+                _ballPosition.update { Offset(currentBall.posX, currentBall.posY) }
+            }
+
+            lastTimestamp = event.timestamp
         }
     }
 
     fun reset() {
-        // TODO: Reset the ball's state
-        // ball?.reset()
+        ball?.reset()
+        ball?.let {
+            _ballPosition.value = Offset(it.posX, it.posY)
+        }
+        lastTimestamp = 0L
 
-        // TODO: Update the StateFlow with the reset position
-        // ball?.let { ... }
-
-        // TODO: Reset the lastTimestamp
-        // lastTimestamp = 0L
+        // reset baseline so next reading captures fresh rest orientation
+        hasBaseline = false
     }
 }
