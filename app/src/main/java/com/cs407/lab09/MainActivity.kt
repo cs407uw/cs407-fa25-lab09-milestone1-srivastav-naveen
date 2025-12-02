@@ -36,7 +36,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.cs407.lab09.R
 import com.cs407.lab09.ui.theme.Lab09Theme
 import kotlin.math.roundToInt
 
@@ -62,15 +61,17 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun GameScreen(viewModel: BallViewModel) {
-    // TODO: Initialize the sensorManager
+
     val context = LocalContext.current
-    val sensorManager = remember {
+
+    // TODO: Initialize the sensorManager
+    val sensorManager = remember(context) {
         // ... getSystemService ...
         context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
     }
 
     // TODO: Get the gravitySensor
-    val gravitySensor = remember {
+    val gravitySensor = remember(sensorManager) {
         // ... getDefaultSensor ...
         sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY)
     }
@@ -78,14 +79,17 @@ fun GameScreen(viewModel: BallViewModel) {
     // This effect runs when the composable enters the screen
     // and cleans up when it leaves
     DisposableEffect(sensorManager, gravitySensor) {
-        val listener = object : SensorEventListener {
+
+        val gravityListener = object : SensorEventListener {
+
             override fun onSensorChanged(event: SensorEvent?) {
                 // TODO: Pass the sensor event to the ViewModel
-                event?.let {
+                event?.let { sensorEvent ->
                     // ...
-                    viewModel.onSensorDataChanged(it)
+                    viewModel.onSensorDataChanged(sensorEvent)
                 }
             }
+
             override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
                 // Do nothing
             }
@@ -96,32 +100,25 @@ fun GameScreen(viewModel: BallViewModel) {
         if (gravitySensor != null) {
             // ... sensorManager.registerListener ...
             sensorManager.registerListener(
-                listener,
+                gravityListener,
                 gravitySensor,
                 SensorManager.SENSOR_DELAY_GAME
             )
         }
 
-        // onDispose is called when the composable leaves the screen
         onDispose {
             // TODO: Unregister the sensor listener
             // (Don't forget to add a null check for gravitySensor!)
             if (gravitySensor != null) {
                 // ... sensorManager.unregisterListener ...
-                sensorManager.unregisterListener(listener)
+                sensorManager.unregisterListener(gravityListener, gravitySensor)
             }
         }
     }
 
-    // BALL POSITION FROM VIEWMODEL
-    val ballPosition by viewModel.ballPosition.collectAsStateWithLifecycle()
-
-    // Ball size dp → px
-    val ballSize = 50.dp
-    val ballSizePx = with(LocalDensity.current) { ballSize.toPx() }
-
     // UI layout
     Column(modifier = Modifier.fillMaxSize()) {
+
         // 1. The Reset Button
         Button(
             onClick = {
@@ -132,7 +129,7 @@ fun GameScreen(viewModel: BallViewModel) {
                 .align(Alignment.CenterHorizontally)
                 .padding(16.dp)
         ) {
-            Text(text = "Reset")
+            Text("Reset")
         }
 
         // 2. The Game Field
@@ -143,7 +140,7 @@ fun GameScreen(viewModel: BallViewModel) {
         val ballPosition by viewModel.ballPosition.collectAsStateWithLifecycle()
 
         // Placeholder, remove when TODO is done:
-        //val ballPosition = Offset.Zero
+        // val ballPosition = Offset.Zero
 
         Box(
             modifier = Modifier
@@ -163,6 +160,7 @@ fun GameScreen(viewModel: BallViewModel) {
                     )
                 }
         ) {
+
             // 3. The Ball
             Image(
                 painter = painterResource(id = R.drawable.soccer),

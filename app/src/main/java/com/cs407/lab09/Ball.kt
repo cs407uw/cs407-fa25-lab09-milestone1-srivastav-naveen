@@ -17,52 +17,56 @@ class Ball(
     var posY = 0f
     var velocityX = 0f
     var velocityY = 0f
+
     private var accX = 0f
     private var accY = 0f
 
     private var isFirstUpdate = true
 
     init {
-        // TODO: Call reset()
+        // Put ball in the center with zero motion
         reset()
     }
 
     /**
      * Updates the ball's position and velocity based on the given acceleration and time step.
-     * (See lab handout for physics equations)
+     * Uses the linear-acceleration model from the handout:
+     *
+     * v1 = v0 + 1/2 (a0 + a1) * Δt
+     * l  = v0 * Δt + 1/6 (3a0 + a1) * (Δt)^2
      */
     fun updatePositionAndVelocity(xAcc: Float, yAcc: Float, dT: Float) {
-        if(isFirstUpdate) {
+        if (isFirstUpdate) {
             isFirstUpdate = false
             accX = xAcc
             accY = yAcc
             return
         }
-// previous acceleration values
+
+        val timeStep = dT
+
         val prevAccX = accX
+        val newAccX = xAcc
+        val startVelX = velocityX
+
+        val updatedVelX = startVelX + 0.5f * (prevAccX + newAccX) * timeStep
+        val deltaX = startVelX * timeStep +
+                (1f / 6f) * (3f * prevAccX + newAccX) * timeStep * timeStep
+
+
         val prevAccY = accY
+        val newAccY = yAcc
+        val startVelY = velocityY
 
-// Read new acceleration values from the sensor (this frame)
-        val currAccX = xAcc
-        val currAccY = yAcc
-
-// Update stored acceleration for use in next frame
-        accX = currAccX
-        accY = currAccY
-
-// --- Velocity update using trapezoidal integration ---
-// v1 = v0 + 0.5 * (a0 + a1) * dt
-        velocityX += 0.5f * (prevAccX + currAccX) * dT
-        velocityY += 0.5f * (prevAccY + currAccY) * dT
-
-// --- Position update using Simpson’s Rule (from PDF) ---
-// dx = v0 * dt + (1/6)(3a0 + a1) dt²
-        val dx = velocityX * dT + (1f / 6f) * (3 * prevAccX + currAccX) * dT * dT
-        val dy = velocityY * dT + (1f / 6f) * (3 * prevAccY + currAccY) * dT * dT
-
-// Apply the movement
-        posX += dx
-        posY += dy
+        val updatedVelY = startVelY + 0.5f * (prevAccY + newAccY) * timeStep
+        val deltaY = startVelY * timeStep +
+                (1f / 6f) * (3f * prevAccY + newAccY) * timeStep * timeStep
+        posX += deltaX
+        posY += deltaY
+        velocityX = updatedVelX
+        velocityY = updatedVelY
+        accX = newAccX
+        accY = newAccY
 
         checkBoundaries()
     }
@@ -70,40 +74,45 @@ class Ball(
     /**
      * Ensures the ball does not move outside the boundaries.
      * When it collides, velocity and acceleration perpendicular to the
-     * boundary should be set to 0.
+     * boundary are set to 0.
      */
     fun checkBoundaries() {
-        // TODO: implement the checkBoundaries function
-        // (Check all 4 walls: left, right, top, bottom)
+        var collidedX = false
+        var collidedY = false
 
-        // Left boundary
+        // Left wall
         if (posX < 0f) {
             posX = 0f
-            velocityX = 0f
-            accX = 0f
+            collidedX = true
         }
 
-        // Right boundary
-        if (posX > backgroundWidth - ballSize) {
+        // Right wall
+        if (posX + ballSize > backgroundWidth) {
             posX = backgroundWidth - ballSize
-            velocityX = 0f
-            accX = 0f
+            collidedX = true
         }
 
-        // Top boundary
+        // Top wall
         if (posY < 0f) {
             posY = 0f
-            velocityY = 0f
-            accY = 0f
+            collidedY = true
         }
 
-        // Bottom boundary
-        if (posY > backgroundHeight - ballSize) {
+        // Bottom wall
+        if (posY + ballSize > backgroundHeight) {
             posY = backgroundHeight - ballSize
+            collidedY = true
+        }
+
+        // Cancel velocity & acceleration in collided directions
+        if (collidedX) {
+            velocityX = 0f
+            accX = 0f
+        }
+        if (collidedY) {
             velocityY = 0f
             accY = 0f
         }
-
     }
 
     /**
@@ -111,9 +120,6 @@ class Ball(
      * velocity and acceleration.
      */
     fun reset() {
-        // TODO: implement the reset function
-        // (Reset posX, posY, velocityX, velocityY, accX, accY, isFirstUpdate)
-
         posX = (backgroundWidth - ballSize) / 2f
         posY = (backgroundHeight - ballSize) / 2f
 
@@ -123,6 +129,5 @@ class Ball(
         accY = 0f
 
         isFirstUpdate = true
-
     }
 }
